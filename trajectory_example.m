@@ -20,14 +20,22 @@ lidar.Range = [0 50];
 
 %% Trajectory
 % Arrival, Waypoints, Orientation
-constraints = [0,    0,0,0,    0,0,0;
-               3,    50,20,0,    90,0,0;
-               4,    58,15.5,0,  162,0,0;
-               5.5,  59.5,0,0    180,0,0];
+constraints = [0,    0,0,0,     0,0,0;
+               1,    10,20,0,   0,0,0;
+               2,    5,50,0,    0,0,0;
+               3,    40,70,0    0,0,0;
+               4,    60,50,0    0,0,0;
+               5,    80,40,0    0,0,0;
+               6,    90,80,0    0,0,0;
+               7,    100,100,0    0,0,0];
+
+% trajectory = waypointTrajectory(constraints(:,2:4), ...
+%     'TimeOfArrival',constraints(:,1), ...
+%     'Orientation',quaternion(constraints(:,5:7),'eulerd','ZYX','frame'));
 
 trajectory = waypointTrajectory(constraints(:,2:4), ...
-    'TimeOfArrival',constraints(:,1), ...
-    'Orientation',quaternion(constraints(:,5:7),'eulerd','ZYX','frame'));
+    'TimeOfArrival',constraints(:,1));
+
 
 tInfo = waypointInfo(trajectory);
 
@@ -36,8 +44,8 @@ hold on
 show(map)
 plot(tInfo.Waypoints(1,1),tInfo.Waypoints(1,2),'b*')
 grid on
-xlim([0 100])
-xlim([0 100])
+% xlim([0 100])
+% ylim([0 100])
 %daspect([1 1 1])
 
 orient = zeros(tInfo.TimeOfArrival(end)*trajectory.SampleRate,1,'quaternion');
@@ -54,7 +62,9 @@ while ~isDone(trajectory)
    [ranges,angles] = lidar(pos,map);
    local_scan = lidarScan(ranges,angles);
    global_scan = lidarScan(local_scan.Cartesian + [pos(1),pos(2)]);
-   plot(global_scan,'Color','r')
+   plot(global_scan)
+   xlim([0 100])
+   ylim([0 100])
    
    pause(trajectory.SamplesPerFrame/trajectory.SampleRate)
    count = count + 1;
