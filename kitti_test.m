@@ -37,3 +37,10 @@ addpath('velodyne_points');
 addpath('velodyne_points\data_pcd');
 
 % get point clouds from 
+pcd_files = dir('velodyne_points\data_pcd\*.pcd');
+
+for k = 1:length(pcd_files)
+    filename = pcd_files(k).name;
+    pcloud = pcread(filename);
+    
+end
