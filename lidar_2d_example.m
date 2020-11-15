@@ -29,4 +29,11 @@ lidar.Range = [0 50];
 [ranges,angles] = lidar(pose,map);
 local_scan = lidarScan(ranges,angles);
 global_scan = lidarScan(local_scan.Cartesian + [pose(1),pose(2)]);
-plot(global_scan)
+%plot(global_scan)
+
+slamObj = lidarSLAM;
+slamObj.LoopClosureThreshold = 360;
+slamObj.LoopClosureSearchRadius = 8;
+
+addScan(slamObj, local_scan);
+show(slamObj);
