@@ -5,9 +5,6 @@ clear all;
 addpath('velodyne_points');
 addpath('velodyne_points\data_pcd');
 
-% pcloud = pcread('0.pcd');
-% pcshow(pcloud);
-
 % read pcd data into pointcloud objects
 dataDir = 'velodyne_points\data_pcd';
 files = dir(fullfile(dataDir, '*.pcd'));
@@ -31,11 +28,12 @@ for ii = 1:length(PointCloud)
     TimeStamp(ii,1) = dt(ii,1);
 end
 full_lidarData = timetable(TimeStamp, PointCloud);
+full_lidarData_backwards = timetable(TimeStamp, flip(PointCloud));
 
 %% Create two agents
-numOverlap = 50;
+numOverlap = 150;
 mid = floor(length(PointCloud)/2);
-agent1 = timetable(TimeStamp(1:mid + numOverlap,1), PointCloud(1:mid+numOverlap,1));
+agent1 = timetable(TimeStamp(1:mid+numOverlap,1), PointCloud(1:mid+numOverlap,1));
 agent2_forward = timetable(TimeStamp(mid-numOverlap:end,1), PointCloud(mid-numOverlap:end,1));
 agent2_backward = timetable(TimeStamp(mid-numOverlap:end,1), flip(PointCloud(mid-numOverlap:end,1)));
 
@@ -56,36 +54,128 @@ agent2_backward = timetable(TimeStamp(mid-numOverlap:end,1), flip(PointCloud(mid
 % end
 % agent2 = timetable(TimeStamp(mid-numOverlap:end,1), flip(Var1));
 
-%% Use recorded LiDAR Data to Build a Map
+%% LiDAR Odometry
 skipFrames = 10;
 downsamplePercent = 0.1; % Downsample the point clouds prior to registration. Downsampling improves both registration accuracy and algorithm speed.
+rng(0); % set random number seed
 
-% Create a map builder object
-mapBuilder = helperLidarMapBuilder('DownsamplePercent', downsamplePercent);
-
-% Set random number seed
-rng(0);
-
+% Create a map builder object and build map
+mapBuilder_full = helperLidarMapBuilder('DownsamplePercent', downsamplePercent);
 closeDisplay = false;
-numFrames    = height(agent1);
+tform = rigid3d;
+build_map(mapBuilder_full, closeDisplay, full_lidarData.PointCloud, skipFrames, tform);
 
-tform_ag1 = rigid3d;
-tform_ag2 = rigid3d;
-for n = 1 : skipFrames : numFrames - skipFrames
+%% LiDAR SLAM
+vSet = pcviewset;
 
-    % Get the nth point cloud
-    ptCloud_ag1 = agent1.Var1(n);
-    ptCloud_ag2 = agent2_backward.Var1(n);
+% Create a loop closure detector
+matchThresh = 0.08;
+loopDetector = helperLoopClosureDetector('MatchThreshold', matchThresh);
 
-    % Use transformation from previous iteration as initial estimate for
-    % current iteration of point cloud registration. (constant velocity)
-    initTform_ag1 = tform_ag1;
-    initTform_ag2 = tform_ag2;
+% Create a figure for view set display
+hFigBefore = figure('Name', 'View Set Display');
+hAxBefore = axes(hFigBefore);
 
-    % Update map using the point cloud
-    tform_ag1 = updateMap(mapBuilder, ptCloud_ag1, initTform_ag1);
-    tform_ag2 = updateMap(mapBuilder, ptCloud_ag2, initTform_ag2);
+% Initialize transformations
+absTform   = rigid3d;  % Absolute transformation to reference frame
+relTform   = rigid3d;  % Relative transformation between successive scans
+initTform  = rigid3d;
+maxTolerableRMSE  = 3; % Maximum allowed RMSE for a loop closure candidate to be accepted
 
-    % Update map display
-    updateDisplay(mapBuilder, closeDisplay);
+viewId = 1;
+for n = 1 : skipFrames : numFrames
+
+    % Read point cloud
+    ptCloudOrig = full_lidarData.PointCloud(n);
+
+    % Process point cloud
+    %   - Segment and remove ground plane
+    %   - Segment and remove ego vehicle
+    ptCloud = helperProcessPointCloud(ptCloudOrig);
+
+    % Downsample the processed point cloud
+    ptCloud = pcdownsample(ptCloud, "random", downsamplePercent);
+
+    firstFrame = (n==1);
+    if firstFrame
+        % Add first point cloud scan as a view to the view set
+        vSet = addView(vSet, viewId, absTform, "PointCloud", ptCloudOrig);
+
+        viewId = viewId + 1;
+        ptCloudPrev = ptCloud;
+        continue;
+    end
+
+%     % Use INS to estimate an initial transformation for registration
+%     initTform = helperComputeInitialEstimateFromINS(relTform, ...
+%         insDataTable(n-skipFrames:n, :));
+
+    % Compute rigid transformation that registers current point cloud with
+    % previous point cloud
+    relTform = pcregisterndt(ptCloud, ptCloudPrev, regGridSize, ...
+        "InitialTransform", initTform);
+
+    % Update absolute transformation to reference frame (first point cloud)
+    absTform = rigid3d( relTform.T * absTform.T );
+
+    % Add current point cloud scan as a view to the view set
+    vSet = addView(vSet, viewId, absTform, "PointCloud", ptCloudOrig);
+
+    % Add a connection from the previous view to the current view representing
+    % the relative transformation between them
+    vSet = addConnection(vSet, viewId-1, viewId, relTform);
+
+    % Detect loop closure candidates
+    [loopFound, loopViewId] = detectLoop(loopDetector, ptCloudOrig);
+
+    % A loop candidate was found
+    if loopFound
+        loopViewId = loopViewId(1);
+
+        % Retrieve point cloud from view set
+        ptCloudOrig = vSet.Views.PointCloud( find(vSet.Views.ViewId == loopViewId, 1) );
+
+        % Process point cloud
+        ptCloudOld = helperProcessPointCloud(ptCloudOrig);
+
+        % Downsample point cloud
+        ptCloudOld = pcdownsample(ptCloudOld, "random", downsamplePercent);
+
+        % Use registration to estimate the relative pose
+        [relTform, ~, rmse] = pcregisterndt(ptCloud, ptCloudOld, ...
+            regGridSize, "MaxIterations", 50);
+
+        acceptLoopClosure = rmse <= maxTolerableRMSE;
+        if acceptLoopClosure
+            % For simplicity, use a constant, small information matrix for
+            % loop closure edges
+            infoMat = 0.01 * eye(6);
+
+            % Add a connection corresponding to a loop closure
+            vSet = addConnection(vSet, loopViewId, viewId, relTform, infoMat);
+        end
+    end
+
+    viewId = viewId + 1;
+
+    ptCloudPrev = ptCloud;
+    initTform   = relTform;
+
+    if n>1 && mod(n, displayRate) == 1
+        hG = plot(vSet, "Parent", hAxBefore);
+        drawnow update
+    end
 end
+
+
+
+
+
+
+
+
+
+
+
+
+
