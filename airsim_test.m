@@ -3,10 +3,10 @@ clear all;
 
 %% Process AirSim Velodyne Data
 addpath('airsim_data');
-addpath('airsim_data\Drone0_pcd');
+addpath('airsim_data\Drone1_pcd');
 
 % read pcd data into pointcloud objects
-dataDir = 'airsim_data\Drone0_pcd';
+dataDir = 'airsim_data\Drone1_pcd';
 files = dir(fullfile(dataDir, '*.pcd'));
 for k = 1:length(files)
     filename = files(k).name;
@@ -85,8 +85,8 @@ maxTolerableRMSE  = 3; % Maximum allowed RMSE for a loop closure candidate to be
 
 % Parameters
 rng(0);                     % random seed for repeatability 
-skipFrames = 5;             % frames to skip
-downSamplePercent = 0.1;    % downsample for registration
+skipFrames = 1;             % frames to skip
+downSamplePercent = 1.0;    % downsample for registration
 displayRate = 5;           % Update display every 50 frames
 regGridSize = 3;
 maxTolerableRMSE  = 3; % Maximum allowed RMSE for a loop closure candidate to be accepted

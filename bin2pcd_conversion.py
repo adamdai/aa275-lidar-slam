@@ -29,4 +29,4 @@ def convert_kitti_bin_to_pcd(binFilePath, outputPath):
 
 if __name__ == "__main__":
     #convert_kitti_bin_to_pcd('velodyne_points/data/', 'velodyne_points/data_pcd/')
-    convert_kitti_bin_to_pcd('airsim_data/Drone0/', 'airsim_data/Drone0_pcd/')
+    convert_kitti_bin_to_pcd('airsim_data/Drone1/', 'airsim_data/Drone1_pcd/')
