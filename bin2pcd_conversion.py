@@ -8,7 +8,8 @@ def convert_kitti_bin_to_pcd(binFilePath, outputPath):
 
     for i in range(len(os.listdir(binFilePath))):
         list_pcd = []
-        bf = binFilePath+"{i}.bin".format(i=str(i).zfill(10))
+        #bf = binFilePath+"{i}.bin".format(i=str(i).zfill(10)) # for kitti
+        bf = binFilePath+"{i}.bin".format(i=str(i).zfill(6)) # for airsim
         nf = outputPath+f"{i}.pcd"
     
         try: 
@@ -27,4 +28,5 @@ def convert_kitti_bin_to_pcd(binFilePath, outputPath):
             print(f"file {i} wasn't found")
 
 if __name__ == "__main__":
-    convert_kitti_bin_to_pcd('velodyne_points/data/', 'velodyne_points/data_pcd/')
+    #convert_kitti_bin_to_pcd('velodyne_points/data/', 'velodyne_points/data_pcd/')
+    convert_kitti_bin_to_pcd('airsim_data/Drone0/', 'airsim_data/Drone0_pcd/')
