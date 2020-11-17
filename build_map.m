@@ -1,5 +1,5 @@
 function build_map(mapBuilder, closeDisplay, ptCloudData, skipFrames, tform)
-numFrames    = length(ptCloudData);
+numFrames    = height(ptCloudData);
 
 for n = 1 : skipFrames : numFrames - skipFrames
     % Get the nth point cloud

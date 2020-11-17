@@ -85,7 +85,7 @@ maxTolerableRMSE  = 3; % Maximum allowed RMSE for a loop closure candidate to be
 
 % Parameters
 rng(0);                     % random seed for repeatability 
-skipFrames = 5;             % frames to skip
+skipFrames = 1;             % frames to skip
 downSamplePercent = 0.1;    % downsample for registration
 displayRate = 5;           % Update display every 50 frames
 regGridSize = 3;
