@@ -207,6 +207,7 @@ clear all;
 
 %% Scenario 1 
 addpath('velodyne_example_data\scenario1');
+addpath('helpers');
 scenario1_dataDir = 'velodyne_example_data\scenario1\';
 files = dir(fullfile(scenario1_dataDir, '*.png'));
  for k = 1:length(files)
