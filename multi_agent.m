@@ -779,6 +779,7 @@ for n = 2: skipFrames : numFrames
 
             acceptLoopClosure = rmse <= maxTolerableRMSE;
             if acceptLoopClosure
+                disp('loop closure')
                 infoMat = 0.01*eye(6);
     %             vSet_cent = addConnection(vSet_cent, loopViewId1, viewId_ag1, relTform, infoMat);
                 vSet_cent = addConnection(vSet_cent, matchId, viewId_ag1, relTform, infoMat);
@@ -802,6 +803,7 @@ for n = 2: skipFrames : numFrames
 
             acceptLoopClosure = rmse <= maxTolerableRMSE;
             if acceptLoopClosure
+                disp('loop closure')
                 infoMat = 0.01*eye(6);
     %             vSet_cent = addConnection(vSet_cent, loopViewId2, viewId_ag2, relTform, infoMat);
                 vSet_cent = addConnection(vSet_cent, matchId, viewId_ag2, relTform, infoMat);
