@@ -618,218 +618,220 @@ end
 % vSetOptim = updateView(vSet_cent, optimG.Nodes);
 % plot(vSetOptim, 'Parent', hAxBefore)
 
-
 %% airsim
-% % airsim data
-% addpath('airsim_data');
-% addpath('airsim_data\Drone0_pcd');
-% addpath('airsim_data\Drone1_pcd');
-% addpath('helpers');
-% agent1_ptc = pcd2timetable('airsim_data\Drone0_pcd\');
-% agent2_ptc = pcd2timetable('airsim_data\Drone1_pcd\');
-% 
-% % run sim
-% rng(0);                     % random seed for repeatability 
-% skipFrames = 1;             % frames to skip
-% downSamplePercent = 0.6;    % downsample for registration
-% displayRate = 5;            % Update display every __ frames
-% regGridSize = 3;
-% maxTolerableRMSE  = 3; % Maximum allowed RMSE for a loop closure candidate to be accepted
-% 
-% % Create a figure for view set display
-% hFigBefore = figure('Name', 'View Set Display');
-% hAxBefore = axes(hFigBefore);
-% 
-% % create a pointcloud manager for each agent and central computer 
-% vSet_ag1 = pcviewset;
-% vSet_ag2 = pcviewset;
-% vSet_cent = pcviewset;
-% 
-% % Create loop closure detector
-% matchThresh = 0.08;
-% loopDetector = helperLoopClosureDetector('MatchThreshold', matchThresh);
-% 
-% % Initialize transformations
-% absTform_ag1 = rigid3d;
-% relTform_ag1 = rigid3d;
-% initTform_ag1 = rigid3d;
-% 
-% absTform_ag2 = rigid3d;
-% relTform_ag2 = rigid3d;
-% initTform_ag2 = rigid3d;
-% 
-% % init with first scan
-% viewId = 1;
-% viewId_ag1 = viewId;
-% viewId_ag2 = viewId + length(agent1_ptc);
-% 
-% ptCloud1_orig = agent1_ptc(1);
-% ptCloud2_orig = agent2_ptc(1);
-% 
-% ptCloud1 = helperProcessPointCloud(ptCloud1_orig);
-% ptCloud1 = pcdownsample(ptCloud1, "random", downSamplePercent);
-% 
-% ptCloud2 = helperProcessPointCloud(ptCloud2_orig);
-% ptCloud2 = pcdownsample(ptCloud2, "random", downSamplePercent);
-% 
-% vSet_ag1 = addView(vSet_ag1, viewId_ag1, absTform_ag1, "PointCloud", ptCloud1_orig);
-% vSet_ag2 = addView(vSet_ag2, viewId_ag2, absTform_ag2, "PointCloud", ptCloud2_orig);
-% 
-% vSet_cent = addView(vSet_cent, viewId_ag1, absTform_ag1, "PointCloud", ptCloud1_orig);
-% vSet_cent = addView(vSet_cent, viewId_ag2, absTform_ag2, "PointCloud", ptCloud2_orig);
-% 
-% ptCloud1_prev = ptCloud1;
-% ptCloud2_prev = ptCloud2;
-% hG = plot(vSet_cent, "Parent", hAxBefore);
-% frame = getframe(hFigBefore);
-% im = frame2im(frame);
-% [imind, cm] = rgb2ind(im, 256);
-% imwrite(imind, cm, 'air_sim.gif', 'gif', 'Loopcount', inf);
-% drawnow update
-% 
-% % TODO: should technically check for loop closure between first two scans
-% 
-% numFrames = max(length(agent1_ptc), length(agent2_ptc));
-% agent1_done = false;
-% agent2_done = false;
-% for n = 2: skipFrames : numFrames
-%     viewId = viewId + 1;
-%     viewId_ag1 = viewId;
-%     viewId_ag2 = viewId + length(agent1_ptc);
-%     
-%     % see if any points left
-%     if n >= length(agent1_ptc)
-%         agent1_done = true;
-%     end
-%     if n >= length(agent2_ptc)
-%         agent2_done = true;
-%     end
-% 
-%     % try to get agent point clouds and register with the previous one
-%     if ~agent1_done
-%         % process point cloud
-%         ptCloud1_orig = agent1_ptc(n);
-% %         ptCloud1 = helperProcessPointCloud(ptCloud1_orig);
-% %         ptCloud1 = pcdownsample(ptCloud1, "random", downSamplePercent);
-%         ptCloud1 = pcdownsample(ptCloud1_orig, "random", downSamplePercent);
-% 
-%         % register and get transforms
-% %         try
-%             relTform_ag1 = pcregisterndt(ptCloud1, ptCloud1_prev, regGridSize,...
+% airsim data
+addpath('airsim_data');
+addpath('airsim_data\Drone0_pcd');
+addpath('airsim_data\Drone1_pcd');
+addpath('helpers');
+agent1_ptc = pcd2timetable('airsim_data\Drone0_pcd\');
+agent2_ptc = pcd2timetable('airsim_data\Drone1_pcd\');
+
+% run sim
+rng(0);                     % random seed for repeatability 
+skipFrames = 1;             % frames to skip
+downSamplePercent = 0.6;    % downsample for registration
+displayRate = 5;            % Update display every __ frames
+regGridSize = 3;
+% regGridSize = 10;
+maxTolerableRMSE  = 3; % Maximum allowed RMSE for a loop closure candidate to be accepted
+
+% Create a figure for view set display
+hFigBefore = figure('Name', 'View Set Display');
+hAxBefore = axes(hFigBefore);
+
+% create a pointcloud manager for each agent and central computer 
+vSet_ag1 = pcviewset;
+vSet_ag2 = pcviewset;
+vSet_cent = pcviewset;
+
+% Create loop closure detector
+matchThresh = 0.08;
+loopDetector = helperLoopClosureDetector('MatchThreshold', matchThresh);
+
+% Initialize transformations
+absTform_ag1 = rigid3d;
+relTform_ag1 = rigid3d;
+initTform_ag1 = rigid3d;
+
+absTform_ag2 = rigid3d;
+relTform_ag2 = rigid3d;
+initTform_ag2 = rigid3d;
+
+% init with first scan
+viewId = 1;
+viewId_ag1 = viewId;
+viewId_ag2 = viewId + length(agent1_ptc);
+
+ptCloud1_orig = agent1_ptc(1);
+ptCloud2_orig = agent2_ptc(1);
+
+ptCloud1 = helperProcessPointCloud(ptCloud1_orig);
+ptCloud1 = pcdownsample(ptCloud1, "random", downSamplePercent);
+
+ptCloud2 = helperProcessPointCloud(ptCloud2_orig);
+ptCloud2 = pcdownsample(ptCloud2, "random", downSamplePercent);
+
+vSet_ag1 = addView(vSet_ag1, viewId_ag1, absTform_ag1, "PointCloud", ptCloud1_orig);
+vSet_ag2 = addView(vSet_ag2, viewId_ag2, absTform_ag2, "PointCloud", ptCloud2_orig);
+
+vSet_cent = addView(vSet_cent, viewId_ag1, absTform_ag1, "PointCloud", ptCloud1_orig);
+vSet_cent = addView(vSet_cent, viewId_ag2, absTform_ag2, "PointCloud", ptCloud2_orig);
+
+ptCloud1_prev = ptCloud1;
+ptCloud2_prev = ptCloud2;
+hG = plot(vSet_cent, "Parent", hAxBefore);
+frame = getframe(hFigBefore);
+im = frame2im(frame);
+[imind, cm] = rgb2ind(im, 256);
+imwrite(imind, cm, 'air_sim.gif', 'gif', 'Loopcount', inf);
+drawnow update
+
+% TODO: should technically check for loop closure between first two scans
+
+numFrames = max(length(agent1_ptc), length(agent2_ptc));
+agent1_done = false;
+agent2_done = false;
+for n = 2: skipFrames : numFrames
+    viewId = viewId + 1;
+    viewId_ag1 = viewId;
+    viewId_ag2 = viewId + length(agent1_ptc);
+    
+    % see if any points left
+    if n >= length(agent1_ptc)
+        agent1_done = true;
+    end
+    if n >= length(agent2_ptc)
+        agent2_done = true;
+    end
+
+    % try to get agent point clouds and register with the previous one
+    if ~agent1_done
+        % process point cloud
+        ptCloud1_orig = agent1_ptc(n);
+%         ptCloud1 = helperProcessPointCloud(ptCloud1_orig);
+%         ptCloud1 = pcdownsample(ptCloud1, "random", downSamplePercent);
+        ptCloud1 = pcdownsample(ptCloud1_orig, "random", downSamplePercent);
+
+        % register and get transforms
+%         try
+            relTform_ag1 = pcregisterndt(ptCloud1, ptCloud1_prev, regGridSize,...
+                "InitialTransform", initTform_ag1);
+            absTform_ag1 = rigid3d(relTform_ag1.T * absTform_ag1.T);
+%         catch
+%             relTform_ag1 = pcregisterndt(ptCloud1_v2, ptCloud1_prev, regGridSize,...
 %                 "InitialTransform", initTform_ag1);
 %             absTform_ag1 = rigid3d(relTform_ag1.T * absTform_ag1.T);
-% %         catch
-% %             relTform_ag1 = pcregisterndt(ptCloud1_v2, ptCloud1_prev, regGridSize,...
-% %                 "InitialTransform", initTform_ag1);
-% %             absTform_ag1 = rigid3d(relTform_ag1.T * absTform_ag1.T);
-% %             ptCloud1_prev = ptCloud1;
-% %         end
-%     
-%         % update viewsets
-%         vSet_ag1 = addView(vSet_ag1, viewId_ag1, absTform_ag1, "PointCloud", ptCloud1_orig);
-%         vSet_ag1 = addConnection(vSet_ag1, viewId_ag1-1, viewId_ag1, relTform_ag1);
-%         vSet_cent = addView(vSet_cent, viewId_ag1, absTform_ag1, "PointCloud", ptCloud1_orig);
-%         vSet_cent = addConnection(vSet_cent, viewId_ag1-1, viewId_ag1, relTform_ag1);
-%     end
-%     
-%     if ~agent2_done
-%         % process point cloud
-%         ptCloud2_orig = agent2_ptc(n);
-% %         ptCloud2 = helperProcessPointCloud(ptCloud2_orig);
-% %         ptCloud2 = pcdownsample(ptCloud2, "random", downSamplePercent);
-%         ptCloud2 = pcdownsample(ptCloud2_orig, "random", downSamplePercent);
-%         
-%         % register and get transforms
-% %         try
-%             relTform_ag2 = pcregisterndt(ptCloud2, ptCloud2_prev, regGridSize,...
+%             ptCloud1_prev = ptCloud1;
+%         end
+    
+        % update viewsets
+        vSet_ag1 = addView(vSet_ag1, viewId_ag1, absTform_ag1, "PointCloud", ptCloud1_orig);
+        vSet_ag1 = addConnection(vSet_ag1, viewId_ag1-1, viewId_ag1, relTform_ag1);
+        vSet_cent = addView(vSet_cent, viewId_ag1, absTform_ag1, "PointCloud", ptCloud1_orig);
+        vSet_cent = addConnection(vSet_cent, viewId_ag1-1, viewId_ag1, relTform_ag1);
+    end
+    
+    if ~agent2_done
+        % process point cloud
+        ptCloud2_orig = agent2_ptc(n);
+%         ptCloud2 = helperProcessPointCloud(ptCloud2_orig);
+%         ptCloud2 = pcdownsample(ptCloud2, "random", downSamplePercent);
+        ptCloud2 = pcdownsample(ptCloud2_orig, "random", downSamplePercent);
+        
+        % register and get transforms
+%         try
+            relTform_ag2 = pcregisterndt(ptCloud2, ptCloud2_prev, regGridSize,...
+                "InitialTransform", initTform_ag2);
+            absTform_ag2 = rigid3d(relTform_ag2.T * absTform_ag2.T);
+%         catch
+%             relTform_ag2 = pcregisterndt(ptCloud2_v2, ptCloud2_prev, regGridSize,...
 %                 "InitialTransform", initTform_ag2);
 %             absTform_ag2 = rigid3d(relTform_ag2.T * absTform_ag2.T);
-% %         catch
-% %             relTform_ag2 = pcregisterndt(ptCloud2_v2, ptCloud2_prev, regGridSize,...
-% %                 "InitialTransform", initTform_ag2);
-% %             absTform_ag2 = rigid3d(relTform_ag2.T * absTform_ag2.T);
-% %             ptCloud2 = ptCloud2_v2;
-% %         end
-%         
-%         % update viewsets
-%         vSet_ag2 = addView(vSet_ag2, viewId_ag2, absTform_ag2, "PointCloud", ptCloud2_orig);
-%         vSet_ag2 = addConnection(vSet_ag2, viewId_ag2-1, viewId_ag2, relTform_ag2);
-%         vSet_cent = addView(vSet_cent, viewId_ag2, absTform_ag2, "PointCloud", ptCloud2_orig);
-%         vSet_cent = addConnection(vSet_cent, viewId_ag2-1, viewId_ag2, relTform_ag2);
-%     end
-%    
-%     % loop detection
-%     if ~agent1_done
-%         [loopFound1, loopViewId1] = detectLoop(loopDetector, ptCloud1_orig);
-%         if loopFound1
-%             loopViewId1 = loopViewId1(1);
-% %             ptCloud_match = vSet_cent.Views.PointCloud(find(vSet_cent.Views.ViewId == loopViewId1, 1));
-%             matchId = vSet_cent.Views.ViewId(loopViewId1);
-%             ptCloud_match = vSet_cent.Views.PointCloud(loopViewId1);
-%             ptCloud_mp = helperProcessPointCloud(ptCloud_match);
-%             ptCloud_mp = pcdownsample(ptCloud_mp, "random", downSamplePercent);
-% 
-%             % register with matching point cloud
-%             [relTform, ~, rmse] = pcregisterndt(ptCloud1, ptCloud_mp, ...
-%                 regGridSize, "MaxIterations", 50);
-% 
-%             acceptLoopClosure = rmse <= maxTolerableRMSE;
-%             if acceptLoopClosure
-%                 infoMat = 0.01*eye(6);
-%     %             vSet_cent = addConnection(vSet_cent, loopViewId1, viewId_ag1, relTform, infoMat);
-%                 vSet_cent = addConnection(vSet_cent, matchId, viewId_ag1, relTform, infoMat);
-%             end
+%             ptCloud2 = ptCloud2_v2;
 %         end
-%     end
-%     
-%     if ~agent2_done
-%         [loopFound2, loopViewId2] = detectLoop(loopDetector, ptCloud2_orig);
-%         if loopFound2
-%             loopViewId2 = loopViewId2(1);
-%     %         ptCloud_match = vSet_cent.Views.PointCloud(find(vSet_cent.Views.ViewId == loopViewId2, 1));
-%             matchId = vSet_cent.Views.ViewId(loopViewId2);
-%             ptCloud_match = vSet_cent.Views.PointCloud(loopViewId2);
-%             ptCloud_mp = helperProcessPointCloud(ptCloud_match);
-%             ptCloud_mp = pcdownsample(ptCloud_mp, "random", downSamplePercent);
-% 
-%             % register with matching point cloud
-%             [relTform, ~, rmse] = pcregisterndt(ptCloud2, ptCloud_mp, ...
-%                 regGridSize, "MaxIterations", 50);
-% 
-%             acceptLoopClosure = rmse <= maxTolerableRMSE;
-%             if acceptLoopClosure
-%                 infoMat = 0.01*eye(6);
-%     %             vSet_cent = addConnection(vSet_cent, loopViewId2, viewId_ag2, relTform, infoMat);
-%                 vSet_cent = addConnection(vSet_cent, matchId, viewId_ag2, relTform, infoMat);
-%             end
-%         end
-%     end
-% 
-%     % TODO: central agent sends optimized trajectories back to agents
-% 
-%     % update initial relative transform
-%     if ~agent1_done
-%         ptCloud1_prev = ptCloud1;
-%         initTform_ag1 = relTform_ag1;
-%     end
-%     if ~agent2_done
-%         ptCloud2_prev = ptCloud2;
-%         initTform_ag2 = relTform_ag2;
-%     end
-% 
-%     % viewset display update
-%     if n>1 && mod(n, displayRate) == 2
-%         hG = plot(vSet_cent, "Parent", hAxBefore);
-%         frame = getframe(hFigBefore);
-%         im = frame2im(frame);
-%         [imind, cm] = rgb2ind(im, 256);
-%         imwrite(imind, cm, 'air_sim.gif', 'gif', 'WriteMode', 'append');
-%         drawnow update
-%     end
-%         
-% end
-% 
-% G = createPoseGraph(vSet_cent);
-% optimG = optimizePoseGraph(G, 'g2o-levenberg-marquardt');
-% vSetOptim = updateView(vSet_cent, optimG.Nodes);
-% plot(vSetOptim, 'Parent', hAxBefore)
+        
+        % update viewsets
+        vSet_ag2 = addView(vSet_ag2, viewId_ag2, absTform_ag2, "PointCloud", ptCloud2_orig);
+        vSet_ag2 = addConnection(vSet_ag2, viewId_ag2-1, viewId_ag2, relTform_ag2);
+        vSet_cent = addView(vSet_cent, viewId_ag2, absTform_ag2, "PointCloud", ptCloud2_orig);
+        vSet_cent = addConnection(vSet_cent, viewId_ag2-1, viewId_ag2, relTform_ag2);
+    end
+   
+    % loop detection
+    if ~agent1_done
+        [loopFound1, loopViewId1] = detectLoop(loopDetector, ptCloud1_orig);
+        if loopFound1
+            loopViewId1 = loopViewId1(1);
+%             ptCloud_match = vSet_cent.Views.PointCloud(find(vSet_cent.Views.ViewId == loopViewId1, 1));
+            matchId = vSet_cent.Views.ViewId(loopViewId1);
+            ptCloud_match = vSet_cent.Views.PointCloud(loopViewId1);
+            ptCloud_mp = helperProcessPointCloud(ptCloud_match);
+            ptCloud_mp = pcdownsample(ptCloud_mp, "random", downSamplePercent);
+
+            % register with matching point cloud
+            [relTform, ~, rmse] = pcregisterndt(ptCloud1, ptCloud_mp, ...
+                regGridSize, "MaxIterations", 50);
+
+            acceptLoopClosure = rmse <= maxTolerableRMSE;
+            if acceptLoopClosure
+                disp('loop closure')
+                infoMat = 0.01*eye(6);
+    %             vSet_cent = addConnection(vSet_cent, loopViewId1, viewId_ag1, relTform, infoMat);
+                vSet_cent = addConnection(vSet_cent, matchId, viewId_ag1, relTform, infoMat);
+            end
+        end
+    end
+    
+    if ~agent2_done
+        [loopFound2, loopViewId2] = detectLoop(loopDetector, ptCloud2_orig);
+        if loopFound2
+            loopViewId2 = loopViewId2(1);
+    %         ptCloud_match = vSet_cent.Views.PointCloud(find(vSet_cent.Views.ViewId == loopViewId2, 1));
+            matchId = vSet_cent.Views.ViewId(loopViewId2);
+            ptCloud_match = vSet_cent.Views.PointCloud(loopViewId2);
+            ptCloud_mp = helperProcessPointCloud(ptCloud_match);
+            ptCloud_mp = pcdownsample(ptCloud_mp, "random", downSamplePercent);
+
+            % register with matching point cloud
+            [relTform, ~, rmse] = pcregisterndt(ptCloud2, ptCloud_mp, ...
+                regGridSize, "MaxIterations", 50);
+
+            acceptLoopClosure = rmse <= maxTolerableRMSE;
+            if acceptLoopClosure
+                disp('loop closure')
+                infoMat = 0.01*eye(6);
+    %             vSet_cent = addConnection(vSet_cent, loopViewId2, viewId_ag2, relTform, infoMat);
+                vSet_cent = addConnection(vSet_cent, matchId, viewId_ag2, relTform, infoMat);
+            end
+        end
+    end
+
+    % TODO: central agent sends optimized trajectories back to agents
+
+    % update initial relative transform
+    if ~agent1_done
+        ptCloud1_prev = ptCloud1;
+        initTform_ag1 = relTform_ag1;
+    end
+    if ~agent2_done
+        ptCloud2_prev = ptCloud2;
+        initTform_ag2 = relTform_ag2;
+    end
+
+    % viewset display update
+    if n>1 && mod(n, displayRate) == 2
+        hG = plot(vSet_cent, "Parent", hAxBefore);
+        frame = getframe(hFigBefore);
+        im = frame2im(frame);
+        [imind, cm] = rgb2ind(im, 256);
+        imwrite(imind, cm, 'air_sim.gif', 'gif', 'WriteMode', 'append');
+        drawnow update
+    end
+        
+end
+
+G = createPoseGraph(vSet_cent);
+optimG = optimizePoseGraph(G, 'g2o-levenberg-marquardt');
+vSetOptim = updateView(vSet_cent, optimG.Nodes);
+plot(vSetOptim, 'Parent', hAxBefore)
