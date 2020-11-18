@@ -287,11 +287,21 @@ classdef helperLidarMapBuilder < handle
                 end
             end
             
+            if nargin>3
+                abstForm = varargin{2};
+                this.AccumTform = abstForm;
+                validateattributes(abstForm, {'rigid3d'}, {'scalar'}, ...
+                'updateMap', 'ptCloudIn');
+            end
+            
             validateattributes(ptCloudIn, {'pointCloud'}, {'scalar'}, ...
                 'updateMap', 'ptCloudIn');
             
             validateattributes(tformInit, {'rigid3d'}, {'scalar'}, ...
                 'updateMap', 'ptCloudIn');
+            
+%             validateattributes(abstForm, {'rigid3d'}, {'scalar'}, ...
+%                 'updateMap', 'ptCloudIn');
             
             % If the pointCloud has no points, ignore it
             hasNoPoints = all( isnan(ptCloudIn.Location), 'all' );
@@ -396,7 +406,7 @@ classdef helperLidarMapBuilder < handle
                         
                     end
                 end
-                
+                               
                 % Compute current position relative to origin
                 this.RelativePositions(end+1,:) = transformPointsForward(...
                     this.AccumTform, origin);
@@ -410,6 +420,10 @@ classdef helperLidarMapBuilder < handle
                 this.PreviousTform = tform;
                 
                 this.ViewId = this.ViewId + 1;
+                
+                optimizeMapPoses(this);
+                rebuildMap(this, 10);
+
             end
         end
         

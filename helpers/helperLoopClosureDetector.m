@@ -74,7 +74,8 @@ classdef helperLoopClosureDetector < handle
         function this = helperLoopClosureDetector(namedargs)
             
             arguments
-                namedargs.IgnoreRecentFeatures (1,1) double     {mustBeInteger, mustBePositive, mustBeReal} = 5;
+%                 namedargs.IgnoreRecentFeatures (1,1) double     {mustBeInteger, mustBePositive, mustBeReal} = 5;
+                namedargs.IgnoreRecentFeatures (1,1) double     {mustBeInteger, mustBePositive, mustBeReal} = 1;
                 namedargs.MatchThreshold       (1,1) double     {mustBePositive, mustBeReal}                = 0.1;
                 namedargs.DistanceThreshold    (1,1) double     {mustBePositive, mustBeReal}                = 1;
                 namedargs.UseKdTree            (1,1) logical    {mustBeNumericOrLogical}                    = false;
