@@ -27,6 +27,7 @@ end
 % Segment ego vehicle as points within a given radius of sensor
 sensorLocation = [0, 0, 0];
 radius         = 3.5;
+% radius = 0.5;
 
 egoIndices  = findNeighborsInRadius(ptCloud, sensorLocation, radius);
 
