@@ -8,7 +8,8 @@ def convert_kitti_bin_to_pcd(binFilePath, outputPath):
 
     for i in range(len(os.listdir(binFilePath))):
         list_pcd = []
-        bf = binFilePath+"{i}.bin".format(i=str(i).zfill(10))
+        #bf = binFilePath+"{i}.bin".format(i=str(i).zfill(10))
+        bf = binFilePath+"{i}.bin".format(i=str(i).zfill(6))
         nf = outputPath+f"{i}.pcd"
     
         try: 

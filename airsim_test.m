@@ -57,7 +57,7 @@ end
 %% LiDAR Odometry
 skipFrames = 1;
 numFrames = length(PointCloud);
-downsamplePercent = 0.1; % Downsample the point clouds prior to registration. Downsampling improves both registration accuracy and algorithm speed.
+downsamplePercent = 0.5; % Downsample the point clouds prior to registration. Downsampling improves both registration accuracy and algorithm speed.
 rng(0); % set random number seed
 
 % Create a map builder object and build map
@@ -86,7 +86,7 @@ maxTolerableRMSE  = 3; % Maximum allowed RMSE for a loop closure candidate to be
 % Parameters
 rng(0);                     % random seed for repeatability 
 skipFrames = 1;             % frames to skip
-downSamplePercent = 0.1;    % downsample for registration
+downSamplePercent = 0.5;    % downsample for registration
 displayRate = 5;           % Update display every 50 frames
 regGridSize = 3;
 maxTolerableRMSE  = 3; % Maximum allowed RMSE for a loop closure candidate to be accepted
@@ -101,7 +101,7 @@ for n = 1 : skipFrames : numFrames
     % Read point cloud
     ptCloudOrig = PointCloud(n);
 
-    % Process point cloud
+    % Process point cloudso i
     %   - Segment and remove ground plane
     %   - Segment and remove ego vehicle
     ptCloud = helperProcessPointCloud(ptCloudOrig);
