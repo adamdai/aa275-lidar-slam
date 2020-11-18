@@ -44,25 +44,26 @@ for n = 2: 1 : stop_frame
     vSet_cent = addView(vSet_cent, viewId, absTform, "PointCloud", ptCloud_orig);
     vSet_cent = addConnection(vSet_cent, viewId-1, viewId, relTform);
 
-    % loop detection
-    [loopFound, loopViewId] = detectLoop(loopDetector, ptCloud_orig);
-    if loopFound
-        loopViewId = loopViewId(1);
-        matchId = vSet_cent.Views.ViewId(loopViewId);
-        ptCloud_match = vSet_cent.Views.PointCloud(loopViewId);
-        ptCloud_mp = helperProcessPointCloud(ptCloud_match);
-        ptCloud_mp = pcdownsample(ptCloud_mp, "random", downSamplePercent);
-
-        % register with matching point cloud
-        [relTform, ~, rmse] = pcregisterndt(ptCloud, ptCloud_mp, ...
-            regGridSize, "MaxIterations", 50);
-
-        acceptLoopClosure = rmse <= maxTolerableRMSE;
-        if acceptLoopClosure
-            infoMat = 0.01*eye(6);
-            vSet_cent = addConnection(vSet_cent, matchId, viewId, relTform, infoMat);
-        end
-    end
+%     % loop detection
+%     [loopFound, loopViewId] = detectLoop(loopDetector, ptCloud_orig);
+%     if loopFound
+%         loopViewId = loopViewId(1);
+%         matchId = vSet_cent.Views.ViewId(loopViewId);
+%         ptCloud_match = vSet_cent.Views.PointCloud(loopViewId);
+%         ptCloud_mp = helperProcessPointCloud(ptCloud_match);
+%         ptCloud_mp = pcdownsample(ptCloud_mp, "random", downSamplePercent);
+% 
+%         % register with matching point cloud
+%         [relTform, ~, rmse] = pcregisterndt(ptCloud, ptCloud_mp, ...
+%             regGridSize, "MaxIterations", 50);
+% 
+%         acceptLoopClosure = rmse <= maxTolerableRMSE;
+%         if acceptLoopClosure
+%             infoMat = 0.01*eye(6);
+%             vSet_cent = addConnection(vSet_cent, matchId, viewId, relTform, infoMat);
+%         end
+%     end
+    
     % update view id
     ptCloud_prev = ptCloud;
     initTform = relTform;

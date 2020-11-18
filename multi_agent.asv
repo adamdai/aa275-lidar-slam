@@ -217,14 +217,14 @@ files = dir(fullfile(scenario1_dataDir, '*.png'));
  end
  
 % create two agents
-numOverlap = 200;
+numOverlap = 300;
 midScan = 1200;
 agent1_ptc = PointClouds(1:midScan + numOverlap);
 agent2_ptc = PointClouds(midScan - numOverlap:end);
 
 % run sim
 rng(0);                     % random seed for repeatability 
-skipFrames = 5;             % frames to skip
+skipFrames = 6;             % frames to skip
 downSamplePercent = 0.1;    % downsample for registration
 displayRate = 100;          % Update display every 50 frames
 regGridSize = 3;
@@ -243,13 +243,19 @@ vSet_cent = pcviewset;
 matchThresh = 0.08;
 loopDetector = helperLoopClosureDetector('MatchThreshold', matchThresh);
 
+% agent 2 init conidtions
+% agent2Tinit = [-0.89008760,0.36625385,-0.27129000,0;-0.42774126,-0.87680066,0.21967901,0;-0.15740883,0.31157675,0.93709332,0;-89.957657,23.329779,25.444904,1];
+% agent2Rotinit = [-0.89008760,0.36625385,-0.27129000;
+%                  -0.42774126,-0.87680066,0.21967901;
+%                  -0.15740883,0.31157675,0.93709332];
+% agent2transInit = [-89.957657,23.329779,25.444904];
+
 % Initialize transformations
 absTform_ag1 = rigid3d;
 relTform_ag1 = rigid3d;
 initTform_ag1 = rigid3d;
 
 [absTform_ag2, initTform_ag2] = get_init_absTform(PointClouds, midScan-numOverlap);
-% absTform_ag2 = rigid3d;
 relTform_ag2 = rigid3d;
 % initTform_ag2 = rigid3d;
 
@@ -276,193 +282,91 @@ vSet_cent = addView(vSet_cent, viewId_ag2, absTform_ag2, "PointCloud", ptCloud2_
 ptCloud1_prev = ptCloud1;
 ptCloud2_prev = ptCloud2;
 hG = plot(vSet_cent, "Parent", hAxBefore);
-frame = getframe(hFigBefore);
-im = frame2im(frame);
-[imind, cm] = rgb2ind(im, 256);
-imwrite(imind, cm, 'scenario1_ma.gif', 'gif', 'Loopcount', inf);
 drawnow update
 
 % TODO: should technically check for loop closure between first two scans
 
-numFrames = min(length(agent1_ptc), length(agent2_ptc));
-totalLoopDetected = 0;
-for n = 2: skipFrames : numFrames
-    viewId = viewId + 1;
-    viewId_ag1 = viewId;
-    viewId_ag2 = viewId + length(agent1_ptc);
-
-    % get agent point clouds
-    ptCloud1_orig = agent1_ptc(n);
-    ptCloud2_orig = agent2_ptc(n);
-
-    % Process point cloud and downsample
-    %   - Segment and remove ground plane
-    %   - Segment and remove ego vehicle
-    ptCloud1 = helperProcessPointCloud(ptCloud1_orig);
-    ptCloud1 = pcdownsample(ptCloud1, "random", downSamplePercent);
-    
-    ptCloud2 = helperProcessPointCloud(ptCloud2_orig);
-    ptCloud2 = pcdownsample(ptCloud2, "random", downSamplePercent);
-
-    % Get rigid transformation that registers points clouds - NDT
-    relTform_ag1 = pcregisterndt(ptCloud1, ptCloud1_prev, regGridSize,...
-        "InitialTransform", initTform_ag1);
-    relTform_ag2 = pcregisterndt(ptCloud2, ptCloud2_prev, regGridSize,...
-        "InitialTransform", initTform_ag2);
-    absTform_ag1 = rigid3d(relTform_ag1.T * absTform_ag1.T);
-    absTform_ag2 = rigid3d(relTform_ag2.T * absTform_ag2.T);
-
-    % agents add new view and connect to previous view
-    vSet_ag1 = addView(vSet_ag1, viewId_ag1, absTform_ag1, "PointCloud", ptCloud1_orig);
-    vSet_ag2 = addView(vSet_ag2, viewId_ag2, absTform_ag2, "PointCloud", ptCloud2_orig);
-    vSet_ag1 = addConnection(vSet_ag1, viewId_ag1-1, viewId_ag1, relTform_ag1);
-    vSet_ag2 = addConnection(vSet_ag2, viewId_ag2-1, viewId_ag2, relTform_ag2);
-
-    % update central viewset
-    vSet_cent = addView(vSet_cent, viewId_ag1, absTform_ag1, "PointCloud", ptCloud1_orig);
-    vSet_cent = addView(vSet_cent, viewId_ag2, absTform_ag2, "PointCloud", ptCloud2_orig);
-    vSet_cent = addConnection(vSet_cent, viewId_ag1-1, viewId_ag1, relTform_ag1);
-    vSet_cent = addConnection(vSet_cent, viewId_ag2-1, viewId_ag2, relTform_ag2);
-
-    % loop detection
-    [loopFound1, loopViewId1] = detectLoop(loopDetector, ptCloud1_orig);
-    [loopFound2, loopViewId2] = detectLoop(loopDetector, ptCloud2_orig);
-    if loopFound1
-        loopViewId1 = loopViewId1(1);
-        matchId = vSet_cent.Views.ViewId(loopViewId1);
-        ptCloud_match = vSet_cent.Views.PointCloud(loopViewId1);
-%         ptCloud_match = vSet_cent.Views.PointCloud(find(vSet_cent.Views.ViewId == loopViewId1, 1));
-        ptCloud_mp = helperProcessPointCloud(ptCloud_match);
-        ptCloud_mp = pcdownsample(ptCloud_mp, "random", downSamplePercent);
-
-        % register with matching point cloud
-        [relTform, ~, rmse] = pcregisterndt(ptCloud1, ptCloud_mp, ...
-            regGridSize, "MaxIterations", 50);
-
-        acceptLoopClosure = rmse <= maxTolerableRMSE;
-        if acceptLoopClosure
-            infoMat = 0.01*eye(6);
-%             vSet_cent = addConnection(vSet_cent, loopViewId1, viewId_ag1, relTform, infoMat);
-            vSet_cent = addConnection(vSet_cent, matchId, viewId_ag1, relTform, infoMat);
-            totalLoopDetected = totalLoopDetected + 1;
-        end
-    end
-    if loopFound2
-        loopViewId2 = loopViewId2(1);
-%         ptCloud_match = vSet_cent.Views.PointCloud(find(vSet_cent.Views.ViewId == loopViewId2, 1));
-        matchId = vSet_cent.Views.ViewId(loopViewId2);
-        ptCloud_match = vSet_cent.Views.PointCloud(loopViewId2);
-        ptCloud_mp = helperProcessPointCloud(ptCloud_match);
-        ptCloud_mp = pcdownsample(ptCloud_mp, "random", downSamplePercent);
-
-        % register with matching point cloud
-        [relTform, ~, rmse] = pcregisterndt(ptCloud2, ptCloud_mp, ...
-            regGridSize, "MaxIterations", 50);
-
-        acceptLoopClosure = rmse <= maxTolerableRMSE;
-        if acceptLoopClosure
-            infoMat = 0.01*eye(6);
-%             vSet_cent = addConnection(vSet_cent, loopViewId2, viewId_ag2, relTform, infoMat);
-            vSet_cent = addConnection(vSet_cent, matchId, viewId_ag2, relTform, infoMat);
-            totalLoopDetected = totalLoopDetected + 1;
-        end
-    end
-
-    % TODO: central agent sends optimized trajectories back to agents
-
-    % update view id
-    ptCloud1_prev = ptCloud1;
-    ptCloud2_prev = ptCloud2;
-    initTform_ag1 = relTform_ag1;
-    initTform_ag2 = relTform_ag2;
-
-%     % optimize posegraph
-%     G = createPoseGraph(vSet_cent);
-%     optimG = optimizePoseGraph(G, 'g2o-levenberg-marquardt');
-%     
-% %     % Find and highlight loop closure connections
-% %     try
-% %         loopEdgeIds = find(abs(diff(G.Edges.EndNodes, 1, 2)) > 1);
-% %         highlight(hG, 'Edges', loopEdgeIds, 'EdgeColor', 'red', 'LineWidth', 3)
-% %     catch
-% %         print("no loop closures found");
-% %     end
-%     
-%     vSet_cent = updateView(vSet_cent, optimG.Nodes);
-
-    % viewset display update
-    if n>1 && mod(n, displayRate) == 2
-        hG = plot(vSet_cent, "Parent", hAxBefore);
-        frame = getframe(hFigBefore);
-        im = frame2im(frame);
-        [imind, cm] = rgb2ind(im, 256);
-        imwrite(imind, cm, 'scenario1_ma.gif', 'gif', 'WriteMode', 'append');
-        drawnow update
-    end
-        
-end
-
-G = createPoseGraph(vSet_cent);
-
-% Find and highlight loop closure connections
-% loopEdgeIds = find(abs(diff(G.Edges.EndNodes, 1, 2)) > 1);
-% highlight(hG, 'Edges', loopEdgeIds, 'EdgeColor', 'red', 'LineWidth', 3)
-
-optimG = optimizePoseGraph(G, 'g2o-levenberg-marquardt');
-vSetOptim = updateView(vSet_cent, optimG.Nodes);
-plot(vSetOptim, 'Parent', hAxBefore)
-
-
-%% Sequential
-% vSet_cent = addView(vSet_cent, vSet_ag2 = addView(vSet_ag2, viewId_ag2, absTform_ag2, "PointCloud", ptCloud2_orig);
-% viewId_ag2, absTform_ag2, "PointCloud", ptCloud2_orig);
-% 
-% numFrames1 = length(agent1_ptc);
-% for n = 2: skipFrames : numFrames1
+% numFrames = min(length(agent1_ptc), length(agent2_ptc));
+% totalLoopDetected = 0;
+% for n = 2: skipFrames : numFrames
 %     viewId = viewId + 1;
 %     viewId_ag1 = viewId;
+%     viewId_ag2 = viewId + length(agent1_ptc);
 % 
 %     % get agent point clouds
-%     ptCloud1_orig = agent1_ptc(n);
+%     ptCloud1_orig = PointClouds(n);
+%     ptCloud2_orig = PointClouds(n);
 % 
 %     % Process point cloud and downsample
 %     %   - Segment and remove ground plane
 %     %   - Segment and remove ego vehicle
 %     ptCloud1 = helperProcessPointCloud(ptCloud1_orig);
 %     ptCloud1 = pcdownsample(ptCloud1, "random", downSamplePercent);
+%     
+%     ptCloud2 = helperProcessPointCloud(ptCloud2_orig);
+%     ptCloud2 = pcdownsample(ptCloud2, "random", downSamplePercent);
 % 
 %     % Get rigid transformation that registers points clouds - NDT
 %     relTform_ag1 = pcregisterndt(ptCloud1, ptCloud1_prev, regGridSize,...
 %         "InitialTransform", initTform_ag1);
+%     relTform_ag2 = pcregisterndt(ptCloud2, ptCloud2_prev, regGridSize,...
+%         "InitialTransform", initTform_ag2);
 %     absTform_ag1 = rigid3d(relTform_ag1.T * absTform_ag1.T);
+%     absTform_ag2 = rigid3d(relTform_ag2.T * absTform_ag2.T);
 % 
 %     % agents add new view and connect to previous view
 %     vSet_ag1 = addView(vSet_ag1, viewId_ag1, absTform_ag1, "PointCloud", ptCloud1_orig);
+%     vSet_ag2 = addView(vSet_ag2, viewId_ag2, absTform_ag2, "PointCloud", ptCloud2_orig);
 %     vSet_ag1 = addConnection(vSet_ag1, viewId_ag1-1, viewId_ag1, relTform_ag1);
+%     vSet_ag2 = addConnection(vSet_ag2, viewId_ag2-1, viewId_ag2, relTform_ag2);
 % 
 %     % update central viewset
 %     vSet_cent = addView(vSet_cent, viewId_ag1, absTform_ag1, "PointCloud", ptCloud1_orig);
+%     vSet_cent = addView(vSet_cent, viewId_ag2, absTform_ag2, "PointCloud", ptCloud2_orig);
 %     vSet_cent = addConnection(vSet_cent, viewId_ag1-1, viewId_ag1, relTform_ag1);
+%     vSet_cent = addConnection(vSet_cent, viewId_ag2-1, viewId_ag2, relTform_ag2);
 % 
 %     % loop detection
 %     [loopFound1, loopViewId1] = detectLoop(loopDetector, ptCloud1_orig);
+%     [loopFound2, loopViewId2] = detectLoop(loopDetector, ptCloud2_orig);
 %     if loopFound1
 %         loopViewId1 = loopViewId1(1);
 %         matchId = vSet_cent.Views.ViewId(loopViewId1);
-% %         ptCloud_match = vSet_cent.Views.PointCloud(loopViewId1);
-%         ptCloud_match = vSet_cent.Views.PointCloud(find(vSet_cent.Views.ViewId == loopViewId1, 1));
+%         ptCloud_match = vSet_cent.Views.PointCloud(loopViewId1);
+% %         ptCloud_match = vSet_cent.Views.PointCloud(find(vSet_cent.Views.ViewId == loopViewId1, 1));
 %         ptCloud_mp = helperProcessPointCloud(ptCloud_match);
 %         ptCloud_mp = pcdownsample(ptCloud_mp, "random", downSamplePercent);
 % 
 %         % register with matching point cloud
-%         [relTform_ag1, ~, rmse] = pcregisterndt(ptCloud1, ptCloud_mp, ...
+%         [relTform, ~, rmse] = pcregisterndt(ptCloud1, ptCloud_mp, ...
 %             regGridSize, "MaxIterations", 50);
 % 
 %         acceptLoopClosure = rmse <= maxTolerableRMSE;
 %         if acceptLoopClosure
 %             infoMat = 0.01*eye(6);
-%             vSet_cent = addConnection(vSet_cent, loopViewId1, viewId_ag1, relTform_ag1, infoMat);
-% %             vSet_cent = addConnection(vSet_cent, matchId, viewId_ag1, relTform, infoMat);
+% %             vSet_cent = addConnection(vSet_cent, loopViewId1, viewId_ag1, relTform, infoMat);
+%             vSet_cent = addConnection(vSet_cent, matchId, viewId_ag1, relTform, infoMat);
+%             totalLoopDetected = totalLoopDetected + 1;
+%         end
+%     end
+%     if loopFound2
+%         loopViewId2 = loopViewId2(1);
+% %         ptCloud_match = vSet_cent.Views.PointCloud(find(vSet_cent.Views.ViewId == loopViewId2, 1));
+%         matchId = vSet_cent.Views.ViewId(loopViewId2);
+%         ptCloud_match = vSet_cent.Views.PointCloud(loopViewId2);
+%         ptCloud_mp = helperProcessPointCloud(ptCloud_match);
+%         ptCloud_mp = pcdownsample(ptCloud_mp, "random", downSamplePercent);
+% 
+%         % register with matching point cloud
+%         [relTform, ~, rmse] = pcregisterndt(ptCloud2, ptCloud_mp, ...
+%             regGridSize, "MaxIterations", 50);
+% 
+%         acceptLoopClosure = rmse <= maxTolerableRMSE;
+%         if acceptLoopClosure
+%             infoMat = 0.01*eye(6);
+% %             vSet_cent = addConnection(vSet_cent, loopViewId2, viewId_ag2, relTform, infoMat);
+%             vSet_cent = addConnection(vSet_cent, matchId, viewId_ag2, relTform, infoMat);
+%             totalLoopDetected = totalLoopDetected + 1;
 %         end
 %     end
 % 
@@ -470,82 +374,8 @@ plot(vSetOptim, 'Parent', hAxBefore)
 % 
 %     % update view id
 %     ptCloud1_prev = ptCloud1;
-%     initTform_ag1 = relTform_ag1;
-% 
-%     % optimize posegraph
-% %     G = createPoseGraph(vSet_cent);
-% %     optimG = optimizePoseGraph(G, 'g2o-levenberg-marquardt');
-% %     
-% %     % Find and highlight loop closure connections
-% %     try
-% %         loopEdgeIds = find(abs(diff(G.Edges.EndNodes, 1, 2)) > 1);
-% %         highlight(hG, 'Edges', loopEdgeIds, 'EdgeColor', 'red', 'LineWidth', 3)
-% %     catch
-% %         print("no loop closures found");
-% %     end
-% %     
-% %     vSet_cent = updateView(vSet_cent, optimG.Nodes);
-% 
-%     % viewset display update
-%     if n>1 && mod(n, displayRate) == 2
-%         hG = plot(vSet_cent, "Parent", hAxBefore);
-%         drawnow update
-%     end
-%         
-% end
-% 
-% numFrames2 = length(agent2_ptc);
-% for n = 2: skipFrames : numFrames2
-%     viewId = viewId + 1;
-%     viewId_ag2 = viewId;
-% 
-%     % get agent point clouds
-%     ptCloud2_orig = PointClouds(n);
-% 
-%     % Process point cloud and downsample
-%     %   - Segment and remove ground plane
-%     %   - Segment and remove ego vehicle
-%     ptCloud2 = helperProcessPointCloud(ptCloud2_orig);
-%     ptCloud2 = pcdownsample(ptCloud2, "random", downSamplePercent);
-% 
-%     % Get rigid transformation that registers points clouds - NDT
-%     relTform_ag2 = pcregisterndt(ptCloud2, ptCloud2_prev, regGridSize,...
-%         "InitialTransform", initTform_ag2);
-%     absTform_ag2 = rigid3d(relTform_ag2.T * absTform_ag2.T);
-% 
-%     % agents add new view and connect to previous view
-%     vSet_ag2 = addView(vSet_ag2, viewId_ag2, absTform_ag2, "PointCloud", ptCloud2_orig);
-%     vSet_ag2 = addConnection(vSet_ag2, viewId_ag2-1, viewId_ag2, relTform_ag2);
-% 
-%     % update central viewset
-%     vSet_cent = addView(vSet_cent, viewId_ag2, absTform_ag2, "PointCloud", ptCloud2_orig);
-%     vSet_cent = addConnection(vSet_cent, viewId_ag2-1, viewId_ag2, relTform_ag2);
-% 
-%     % loop detection
-%     [loopFound2, loopViewId2] = detectLoop(loopDetector, ptCloud2_orig);
-%     if loopFound2
-%         loopViewId2 = loopViewId2(1);
-% %         matchId = vSet_cent.Views.ViewId(loopViewId2);
-%         ptCloud_match = vSet_cent.Views.PointCloud(find(vSet_cent.Views.ViewId == loopViewId2, 1));
-%         ptCloud_mp = helperProcessPointCloud(ptCloud_match);
-%         ptCloud_mp = pcdownsample(ptCloud_mp, "random", downSamplePercent);
-% 
-%         % register with matching point cloud
-%         [relTform_ag2, ~, rmse] = pcregisterndt(ptCloud2, ptCloud_mp, ...
-%             regGridSize, "MaxIterations", 50);
-% 
-%         acceptLoopClosure = rmse <= maxTolerableRMSE;
-%         if acceptLoopClosure
-%             infoMat = 0.01*eye(6);
-%             vSet_cent = addConnection(vSet_cent, loopViewId2, viewId_ag2, relTform_ag2, infoMat);
-% %             vSet_cent = addConnection(vSet_cent, matchId, viewId_ag1, relTform, infoMat);
-%         end
-%     end
-% 
-%     % TODO: central agent sends optimized trajectories back to agents
-% 
-%     % update view id
 %     ptCloud2_prev = ptCloud2;
+%     initTform_ag1 = relTform_ag1;
 %     initTform_ag2 = relTform_ag2;
 % 
 %     % optimize posegraph
@@ -569,13 +399,14 @@ plot(vSetOptim, 'Parent', hAxBefore)
 %     end
 %         
 % end
-% 
-% G = createPoseGraph(vSet_cent);
-% 
-% % Find and highlight loop closure connections
-% % loopEdgeIds = find(abs(diff(G.Edges.EndNodes, 1, 2)) > 1);
-% % highlight(hG, 'Edges', loopEdgeIds, 'EdgeColor', 'red', 'LineWidth', 3)
-% 
-% optimG = optimizePoseGraph(G, 'g2o-levenberg-marquardt');
-% vSetOptim = updateView(vSet_cent, optimG.Nodes);
-% plot(vSetOptim, 'Parent', hAxBefore)
+
+
+G = createPoseGraph(vSet_cent);
+
+% Find and highlight loop closure connections
+% loopEdgeIds = find(abs(diff(G.Edges.EndNodes, 1, 2)) > 1);
+% highlight(hG, 'Edges', loopEdgeIds, 'EdgeColor', 'red', 'LineWidth', 3)
+
+optimG = optimizePoseGraph(G, 'g2o-levenberg-marquardt');
+vSetOptim = updateView(vSet_cent, optimG.Nodes);
+plot(vSetOptim, 'Parent', hAxBefore)

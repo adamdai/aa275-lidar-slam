@@ -49,7 +49,6 @@ ptCloud_prev = ptCloud;
 
 
 hG1 = plot(vSet_cent, "Parent", hAxBefore1);
-hG2 = plot(vSet_cent, "Parent", hAxBefore2);
 drawnow update
 
 % TODO: should technically check for loop closure between first two scans
@@ -73,23 +72,16 @@ for n = 2: 1 : numFrames
     relTform = pcregisterndt(ptCloud, ptCloud_prev, regGridSize,...
         "InitialTransform", initTform);
     absTform = rigid3d(relTform.T * absTform.T);
-    
-    if n == midScan - 300
-        absInit = absTform;
-    end
-        
 
-    % update central viewset
     vSet_cent = addView(vSet_cent, viewId, absTform, "PointCloud", ptCloud_orig);
     vSet_cent = addConnection(vSet_cent, viewId-1, viewId, relTform);
-
+   
     % loop detection
     [loopFound, loopViewId] = detectLoop(loopDetector, ptCloud_orig);
     if loopFound
         loopViewId = loopViewId(1);
         matchId = vSet_cent.Views.ViewId(loopViewId);
         ptCloud_match = vSet_cent.Views.PointCloud(loopViewId);
-%         ptCloud_match = vSet_cent.Views.PointCloud(find(vSet_cent.Views.ViewId == loopViewId1, 1));
         ptCloud_mp = helperProcessPointCloud(ptCloud_match);
         ptCloud_mp = pcdownsample(ptCloud_mp, "random", downSamplePercent);
 
@@ -100,28 +92,26 @@ for n = 2: 1 : numFrames
         acceptLoopClosure = rmse <= maxTolerableRMSE;
         if acceptLoopClosure
             infoMat = 0.01*eye(6);
-%             vSet_cent = addConnection(vSet_cent, loopViewId1, viewId_ag1, relTform, infoMat);
             vSet_cent = addConnection(vSet_cent, matchId, viewId, relTform, infoMat);
             totalLoopDetected = totalLoopDetected + 1;
         end
     end
-
-    % TODO: central agent sends optimized trajectories back to agents
 
     % update view id
     ptCloud_prev = ptCloud;
     initTform = relTform;
 
     % viewset display update
-%     if n>1 && mod(n, displayRate) == 2
-%         if n <= midScan + 200
-%             hG1 = plot(vSet_cent, "Parent", hAxBefore1);
-%             drawnow update
-%         elseif n >= midScan - 200
-%             hG2 = plot(vSet_cent, "Parent", hAxBefore2);
-%             drawnow update
-%         end
-%     end
+    if n>1 && mod(n, displayRate) == 2
+        if n <= midScan + 200
+            hG1 = plot(vSet_cent, "Parent", hAxBefore1);
+            drawnow update
+        end
+        if n >= midScan - 200
+            hG2 = plot(vSet_cent, "Parent", hAxBefore2);
+            drawnow update
+        end
+    end
         
 end
 
