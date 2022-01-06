@@ -1,0 +1,13 @@
+addpath('airsim_data');
+addpath('airsim_data\Drone1_pcd');
+
+dataDir = 'airsim_data\Drone1_pcd';
+files = dir(fullfile(dataDir, '*.pcd'));
+for k = 1:length(files)
+    filename = files(k).name;
+    pcloud = pcread(filename);
+	PointCloud(k,1) = pcloud;
+end
+
+pcshow(PointCloud(1));
+pcshow([0,0,0],[[);
